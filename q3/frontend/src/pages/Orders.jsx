@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { request } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Orders() {
+  const { user } = useAuth();
   const [ordersList, setOrdersList] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [errorBanner, setErrorBanner] = useState('');
@@ -46,8 +48,12 @@ export default function Orders() {
   return (
     <div className="main-wrapper">
       <div className="headline-wrap">
-        <h2>Purchases & Orders</h2>
-        <p className="text-subtle">Review placed orders and manage safe cancellations with single stock restoration</p>
+        <h2>{user?.role === 'admin' ? 'Store Orders (All Customers)' : 'Purchases & Orders'}</h2>
+        <p className="text-subtle">
+          {user?.role === 'admin'
+            ? 'Administrator overview of all customer purchases, status, and inventory lifecycle'
+            : 'Review placed orders and manage safe cancellations with single stock restoration'}
+        </p>
       </div>
 
       {successBanner && <div className="banner-success">{successBanner}</div>}
@@ -63,6 +69,11 @@ export default function Orders() {
                 <div>
                   <span className="serial-tag">Invoice #{ord._id}</span>
                   <div className="date-sub">{new Date(ord.createdAt).toLocaleString()}</div>
+                  {user?.role === 'admin' && ord.user && (
+                    <div style={{ fontSize: '0.82rem', color: '#0d9488', fontWeight: '600', marginTop: '0.2rem' }}>
+                      Customer: {ord.user.name} ({ord.user.email})
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <span className={`state-pill state-${ord.status}`}>{ord.status.toUpperCase()}</span>

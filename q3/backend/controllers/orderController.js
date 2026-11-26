@@ -3,7 +3,10 @@ const Product = require('../models/Product');
 
 exports.getMyOrders = async (req, res) => {
   try {
-    const customerOrders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
+    const filter = req.user.role === 'admin' ? {} : { user: req.user._id };
+    const customerOrders = await Order.find(filter)
+      .populate('user', 'name email')
+      .sort({ createdAt: -1 });
     return res.json(customerOrders);
   } catch (err) {
     return res.status(500).json({ message: err.message });

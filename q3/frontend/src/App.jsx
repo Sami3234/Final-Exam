@@ -59,18 +59,20 @@ export default function App() {
           >
             Catalog
           </button>
-          <button
-            className={`tab-link ${activeTab === 'cart' ? 'active-tab' : ''}`}
-            onClick={() => setActiveTab('cart')}
-          >
-            Bag
-            {bagItemCount > 0 && <span className="cart-pill">{bagItemCount}</span>}
-          </button>
+          {user.role === 'customer' && (
+            <button
+              className={`tab-link ${activeTab === 'cart' ? 'active-tab' : ''}`}
+              onClick={() => setActiveTab('cart')}
+            >
+              Bag
+              {bagItemCount > 0 && <span className="cart-pill">{bagItemCount}</span>}
+            </button>
+          )}
           <button
             className={`tab-link ${activeTab === 'orders' ? 'active-tab' : ''}`}
             onClick={() => setActiveTab('orders')}
           >
-            Orders
+            {user.role === 'admin' ? 'All Orders' : 'My Orders'}
           </button>
 
           <div className="session-chip">

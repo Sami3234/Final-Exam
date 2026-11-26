@@ -132,13 +132,19 @@ export default function Products({ onAddToCartSuccess }) {
                 <h3 style={{ fontSize: '1.05rem', fontWeight: '700' }}>{prod.name}</h3>
                 <div className="price-tag">{prod.price} PKR</div>
               </div>
-              <button
-                className="action-btn btn-teal full-width"
-                disabled={prod.stock <= 0}
-                onClick={() => pushToCart(prod)}
-              >
-                {prod.stock > 0 ? 'Add to Bag' : 'Out of Stock'}
-              </button>
+              {user?.role === 'customer' ? (
+                <button
+                  className="action-btn btn-teal full-width"
+                  disabled={prod.stock <= 0}
+                  onClick={() => pushToCart(prod)}
+                >
+                  {prod.stock > 0 ? 'Add to Bag' : 'Out of Stock'}
+                </button>
+              ) : (
+                <div style={{ textAlign: 'center', fontSize: '0.8rem', color: '#0d9488', background: '#f0fdfa', padding: '0.45rem', borderRadius: '6px', fontWeight: '600', border: '1px solid #ccfbf1' }}>
+                  Catalog Item (Active)
+                </div>
+              )}
             </div>
           ))}
         </div>
