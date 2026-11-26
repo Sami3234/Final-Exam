@@ -23,7 +23,7 @@ ATTEMPTED QUESTIONS:
      * Flat Shipping Fee: 50 + 671 = 721 PKR
      * Free Shipping Threshold: 1000 + 671 = 1671 PKR
    - Project Folder: q3/
-   - GitHub Repository: https://github.com/Kk34samikhan/cartcraft-safe-checkout
+   - GitHub Repository: https://github.com/Sami3234/Final-Exam
    - Screen Recording File: Screen Recordings/Q3.mp4
 
 --------------------------------------------------
