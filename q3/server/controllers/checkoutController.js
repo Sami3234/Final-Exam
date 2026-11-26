@@ -3,178 +3,186 @@ const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Idempotency = require('../models/Idempotency');
-
-const N = Number(process.env.ROLL_N) || 671;
-const FLAT_SHIPPING = 50 + N;
-const FREE_SHIPPING_THRESHOLD = 1000 + N;
+const { computeShipping } = require('../services/shippingService');
 
 exports.checkout = async (req, res) => {
-  const idempotencyKey = req.headers['idempotency-key'];
-  if (!idempotencyKey) {
-    return res.status(400).json({ message: 'Idempotency-Key header is required' });
+  const idempotencyHeader = req.headers['idempotency-key'];
+  if (!idempotencyHeader) {
+    return res.status(400).json({ message: 'Missing required Idempotency-Key in request header' });
   }
 
-  const existingRequest = await Idempotency.findOne({ key: idempotencyKey, user: req.user._id });
-  if (existingRequest) {
-    return res.status(existingRequest.status).json(existingRequest.response);
+  const cachedTransaction = await Idempotency.findOne({
+    key: idempotencyHeader,
+    user: req.user._id
+  });
+
+  if (cachedTransaction) {
+    return res.status(cachedTransaction.status).json(cachedTransaction.response);
   }
 
-  const cart = await Cart.findOne({ user: req.user._id });
-  if (!cart || cart.items.length === 0) {
-    return res.status(400).json({ message: 'Your cart is empty' });
+  const customerCart = await Cart.findOne({ user: req.user._id });
+  if (!customerCart || customerCart.items.length === 0) {
+    return res.status(400).json({ message: 'Checkout halted: Shopping bag is empty' });
   }
 
-  let session = null;
-  let useTransactions = false;
+  let dbSession = null;
+  let supportsTransactions = false;
+
   try {
-    session = await mongoose.startSession();
-    session.startTransaction();
-    useTransactions = true;
-  } catch (e) {
-    session = null;
-    useTransactions = false;
+    dbSession = await mongoose.startSession();
+    dbSession.startTransaction();
+    supportsTransactions = true;
+  } catch (initErr) {
+    dbSession = null;
+    supportsTransactions = false;
   }
 
-  if (useTransactions) {
+  if (supportsTransactions) {
     try {
-      const orderItems = [];
-      let subtotal = 0;
+      const lineSummary = [];
+      let calculatedSubtotal = 0;
 
-      for (const cartItem of cart.items) {
-        const product = await Product.findOneAndUpdate(
-          { _id: cartItem.product, stock: { $gte: cartItem.quantity } },
-          { $inc: { stock: -cartItem.quantity } },
-          { session, new: true }
+      for (const cartRow of customerCart.items) {
+        const productSnapshot = await Product.findOneAndUpdate(
+          { _id: cartRow.product, stock: { $gte: cartRow.quantity } },
+          { $inc: { stock: -cartRow.quantity } },
+          { session: dbSession, new: true }
         );
 
-        if (!product) {
-          await session.abortTransaction();
-          session.endSession();
+        if (!productSnapshot) {
+          await dbSession.abortTransaction();
+          dbSession.endSession();
           return res.status(400).json({
-            message: `Checkout failed: Insufficient stock for product ID ${cartItem.product}. No stock was deducted.`
+            message: `Checkout aborted: Stock unavailable for product ID ${cartRow.product}. Zero units were deducted.`
           });
         }
 
-        const itemSubtotal = product.price * cartItem.quantity;
-        subtotal += itemSubtotal;
-        orderItems.push({
-          product: product._id,
-          name: product.name,
-          quantity: cartItem.quantity,
-          price: product.price
+        const lineCost = productSnapshot.price * cartRow.quantity;
+        calculatedSubtotal += lineCost;
+
+        lineSummary.push({
+          product: productSnapshot._id,
+          name: productSnapshot.name,
+          quantity: cartRow.quantity,
+          price: productSnapshot.price
         });
       }
 
-      const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING;
-      const total = subtotal + shipping;
+      const calculatedShipping = computeShipping(calculatedSubtotal, lineSummary.length);
+      const invoiceTotal = calculatedSubtotal + calculatedShipping;
 
-      const [order] = await Order.create(
+      const [newOrder] = await Order.create(
         [{
           user: req.user._id,
-          items: orderItems,
-          subtotal,
-          shipping,
-          total,
+          items: lineSummary,
+          subtotal: calculatedSubtotal,
+          shipping: calculatedShipping,
+          total: invoiceTotal,
           status: 'placed',
-          idempotencyKey
+          idempotencyKey: idempotencyHeader
         }],
-        { session }
+        { session: dbSession }
       );
 
-      await Cart.findOneAndUpdate({ user: req.user._id }, { $set: { items: [] } }, { session });
+      await Cart.findOneAndUpdate(
+        { user: req.user._id },
+        { $set: { items: [] } },
+        { session: dbSession }
+      );
 
-      const responsePayload = {
+      const successEnvelope = {
         message: 'Order placed successfully',
-        order
+        order: newOrder
       };
 
       await Idempotency.create(
         [{
-          key: idempotencyKey,
+          key: idempotencyHeader,
           user: req.user._id,
-          orderId: order._id,
-          response: responsePayload,
+          orderId: newOrder._id,
+          response: successEnvelope,
           status: 201
         }],
-        { session }
+        { session: dbSession }
       );
 
-      await session.commitTransaction();
-      session.endSession();
+      await dbSession.commitTransaction();
+      dbSession.endSession();
 
-      return res.status(201).json(responsePayload);
-    } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(500).json({ message: 'Checkout transaction error: ' + error.message });
+      return res.status(201).json(successEnvelope);
+    } catch (txnError) {
+      await dbSession.abortTransaction();
+      dbSession.endSession();
+      return res.status(500).json({ message: 'Transaction failure: ' + txnError.message });
     }
   }
 
-  const reserved = [];
+  const rollbackHoldings = [];
   try {
-    const orderItems = [];
-    let subtotal = 0;
+    const lineSummary = [];
+    let calculatedSubtotal = 0;
 
-    for (const cartItem of cart.items) {
-      const product = await Product.findOneAndUpdate(
-        { _id: cartItem.product, stock: { $gte: cartItem.quantity } },
-        { $inc: { stock: -cartItem.quantity } },
+    for (const cartRow of customerCart.items) {
+      const productSnapshot = await Product.findOneAndUpdate(
+        { _id: cartRow.product, stock: { $gte: cartRow.quantity } },
+        { $inc: { stock: -cartRow.quantity } },
         { new: true }
       );
 
-      if (!product) {
-        for (const r of reserved) {
-          await Product.findByIdAndUpdate(r.productId, { $inc: { stock: r.qty } });
+      if (!productSnapshot) {
+        for (const item of rollbackHoldings) {
+          await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.units } });
         }
         return res.status(400).json({
-          message: `Checkout failed: Insufficient stock for product ID ${cartItem.product}. All reserved stock was restored.`
+          message: `Checkout aborted: Stock unavailable for product ID ${cartRow.product}. All reserved stock was restored.`
         });
       }
 
-      reserved.push({ productId: product._id, qty: cartItem.quantity });
-      const itemSubtotal = product.price * cartItem.quantity;
-      subtotal += itemSubtotal;
-      orderItems.push({
-        product: product._id,
-        name: product.name,
-        quantity: cartItem.quantity,
-        price: product.price
+      rollbackHoldings.push({ productId: productSnapshot._id, units: cartRow.quantity });
+      const lineCost = productSnapshot.price * cartRow.quantity;
+      calculatedSubtotal += lineCost;
+
+      lineSummary.push({
+        product: productSnapshot._id,
+        name: productSnapshot.name,
+        quantity: cartRow.quantity,
+        price: productSnapshot.price
       });
     }
 
-    const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING;
-    const total = subtotal + shipping;
+    const calculatedShipping = computeShipping(calculatedSubtotal, lineSummary.length);
+    const invoiceTotal = calculatedSubtotal + calculatedShipping;
 
-    const order = await Order.create({
+    const newOrder = await Order.create({
       user: req.user._id,
-      items: orderItems,
-      subtotal,
-      shipping,
-      total,
+      items: lineSummary,
+      subtotal: calculatedSubtotal,
+      shipping: calculatedShipping,
+      total: invoiceTotal,
       status: 'placed',
-      idempotencyKey
+      idempotencyKey: idempotencyHeader
     });
 
     await Cart.findOneAndUpdate({ user: req.user._id }, { $set: { items: [] } });
 
-    const responsePayload = {
+    const successEnvelope = {
       message: 'Order placed successfully',
-      order
+      order: newOrder
     };
 
     await Idempotency.create({
-      key: idempotencyKey,
+      key: idempotencyHeader,
       user: req.user._id,
-      orderId: order._id,
-      response: responsePayload,
+      orderId: newOrder._id,
+      response: successEnvelope,
       status: 201
     });
 
-    return res.status(201).json(responsePayload);
-  } catch (error) {
-    for (const r of reserved) {
-      await Product.findByIdAndUpdate(r.productId, { $inc: { stock: r.qty } });
+    return res.status(201).json(successEnvelope);
+  } catch (procErr) {
+    for (const item of rollbackHoldings) {
+      await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.units } });
     }
-    return res.status(500).json({ message: 'Checkout error: ' + error.message });
+    return res.status(500).json({ message: 'Checkout execution failed: ' + procErr.message });
   }
 };

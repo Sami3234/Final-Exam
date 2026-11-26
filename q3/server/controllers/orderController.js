@@ -3,65 +3,65 @@ const Product = require('../models/Product');
 
 exports.getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
-    res.json(orders);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    const customerOrders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
+    return res.json(customerOrders);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
 };
 
 exports.getOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+    const orderDoc = await Order.findById(req.params.id);
+    if (!orderDoc) {
+      return res.status(404).json({ message: 'Requested order could not be located' });
     }
 
-    const isOwner = order.user.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === 'admin';
+    const belongsToCaller = orderDoc.user.toString() === req.user._id.toString();
+    const hasAdminPrivilege = req.user.role === 'admin';
 
-    if (!isOwner && !isAdmin) {
-      return res.status(403).json({ message: 'Access denied: You are not authorized to view this order' });
+    if (!belongsToCaller && !hasAdminPrivilege) {
+      return res.status(403).json({ message: 'Access forbidden: You cannot view orders placed by other accounts' });
     }
 
-    res.json(order);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.json(orderDoc);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
 };
 
 exports.cancelOrder = async (req, res) => {
   try {
-    const query = { _id: req.params.id, status: 'placed' };
+    const criteria = { _id: req.params.id, status: 'placed' };
     if (req.user.role !== 'admin') {
-      query.user = req.user._id;
+      criteria.user = req.user._id;
     }
 
-    const order = await Order.findOneAndUpdate(
-      query,
+    const updatedOrder = await Order.findOneAndUpdate(
+      criteria,
       { $set: { status: 'cancelled' } },
       { new: false }
     );
 
-    if (!order) {
+    if (!updatedOrder) {
       return res.status(400).json({
-        message: 'Order cannot be cancelled. It may not exist, is not yours, or is already cancelled.'
+        message: 'Order cancellation rejected: Order either does not exist, belongs to another user, or was previously cancelled.'
       });
     }
 
-    for (const item of order.items) {
+    for (const line of updatedOrder.items) {
       await Product.findByIdAndUpdate(
-        item.product,
-        { $inc: { stock: item.quantity } }
+        line.product,
+        { $inc: { stock: line.quantity } }
       );
     }
 
-    res.json({
+    return res.json({
       success: true,
-      message: 'Order cancelled successfully and stock restored exactly once',
-      orderId: order._id
+      message: 'Order successfully cancelled and items restocked exactly once',
+      orderId: updatedOrder._id
     });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
 };
