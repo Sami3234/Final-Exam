@@ -4,8 +4,8 @@
 **Roll Number:** HM-2025-1010-671  
 **Email:** Kk34samikhan@gmail.com  
 **Course:** MERN Stack Web Development  
-**Repository:** [https://github.com/Sami3234/Final-Exam](https://github.com/Sami3234/Final-Exam)
-
+**Repository:** [https://github.com/Sami3234/Final-Exam](https://github.com/Sami3234/Final-Exam) 
+**Vedio:** [https://drive.google.com/drive/folders/1FithYU83PJdZtF84oAtfo0fZuU6JTnvK?usp=drive_link](https://drive.google.com/drive/folders/1FithYU83PJdZtF84oAtfo0fZuU6JTnvK?usp=drive_link)
 ---
 
 ## 📌 Attempted Questions Overview
