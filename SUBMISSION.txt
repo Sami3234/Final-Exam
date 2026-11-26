@@ -1,0 +1,42 @@
+==================================================
+FINAL EXAMINATION SUBMISSION DETAILS
+HUNARMAND PUNJAB - MERN STACK WEB DEVELOPMENT
+==================================================
+
+Student Name: Muhammad Sami Ullah
+Roll Number: HM-2025-1010-671
+Email Address: Kk34samikhan@gmail.com
+Course: MERN Stack Web Development
+
+--------------------------------------------------
+ATTEMPTED QUESTIONS:
+--------------------------------------------------
+1. QUESTION 1: ShopEase Code Review & Hardening
+   - Part A: 9 Bugs & Fixes across all 3 snippets
+   - Part B: Orders Under Load Race Timeline (N = 671) & Safe Stock Code
+   - Part C: Test Plan with 4 Before/After Test Lines
+   - Included in: report.docx (Question 1 Section)
+
+2. QUESTION 3: CartCraft - Shopping Cart & Safe Checkout
+   - Personal Rules Applied:
+     * Roll Number Variable (N): 671
+     * Flat Shipping Fee: 50 + 671 = 721 PKR
+     * Free Shipping Threshold: 1000 + 671 = 1671 PKR
+   - Project Folder: q3/
+   - GitHub Repository: https://github.com/Kk34samikhan/cartcraft-safe-checkout
+   - Screen Recording File: Screen Recordings/Q3.mp4
+
+--------------------------------------------------
+SUBMISSION DIRECTORY STRUCTURE:
+--------------------------------------------------
+Muhammad Sami Ullah/
+├── report.docx (Comprehensive Report for Q1 & Q3)
+├── SUBMISSION.txt
+├── Screen Recordings/
+│   └── Q3.mp4 (Screen recording of CartCraft)
+└── q3/ (Complete project code with .git commit history, excluding node_modules)
+    ├── server/
+    ├── client/
+    ├── README.md
+    └── .gitignore
+==================================================
