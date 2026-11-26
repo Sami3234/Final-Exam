@@ -35,16 +35,18 @@
 ## 3. Project Structure
 ```text
 q3/
-├── server/
+├── backend/
 │   ├── config/          # MongoDB connection
 │   ├── controllers/     # Auth, Product, Cart, Checkout, Order controllers
 │   ├── middleware/      # JWT auth and role guards
 │   ├── models/          # User, Product, Cart, Order, Idempotency schemas
 │   ├── routes/          # Express route definitions
+│   ├── services/        # Shipping calculation service
+│   ├── utils/           # Response formatter utility
 │   ├── tests/           # Automated test scripts (Idempotency, Concurrency, Cancel)
 │   ├── package.json
 │   └── server.js
-├── client/
+├── frontend/
 │   ├── src/             # React components, AuthContext, API client, CSS
 │   ├── index.html
 │   ├── vite.config.js
@@ -58,21 +60,21 @@ q3/
 
 ### Prerequisites
 - Node.js (v18+)
-- MongoDB running locally at `mongodb://127.0.0.1:27017/cartcraft` (or set `MONGO_URI` in `server/.env`)
+- MongoDB running locally at `mongodb://127.0.0.1:27017/cartcraft` (or set `MONGO_URI` in `backend/.env`)
 
 ### Backend Setup
 ```bash
-cd server
+cd backend
 npm install
 npm run seed     # Seeds demo accounts and sample products
-npm start        # Starts server on port 5000
+npm start        # Starts backend on port 5000
 ```
 
 ### Frontend Setup
 ```bash
-cd ../client
+cd ../frontend
 npm install
-npm run dev      # Starts React client on port 3000
+npm run dev      # Starts React frontend on port 3000
 ```
 
 Open `http://localhost:3000` in your web browser.
@@ -87,11 +89,11 @@ Open `http://localhost:3000` in your web browser.
 ---
 
 ## 6. Running Test Verification Scripts
-Ensure the server is running on port 5000, then execute:
+Ensure the backend is running on port 5000, then execute:
 
 1. **Idempotency Verification:**
    ```bash
-   cd server
+   cd backend
    npm run test:idempotency
    ```
 2. **All-or-Nothing Low-Stock Failure:**

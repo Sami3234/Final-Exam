@@ -35,8 +35,8 @@ Muhammad Sami Ullah/
 ├── Screen Recordings/
 │   └── Q3.mp4 (Screen recording of CartCraft)
 └── q3/ (Complete project code with .git commit history, excluding node_modules)
-    ├── server/
-    ├── client/
+    ├── backend/
+    ├── frontend/
     ├── README.md
     └── .gitignore
 ==================================================

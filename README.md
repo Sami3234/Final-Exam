@@ -49,16 +49,18 @@ Calculated using the student roll number identifier ($N = 671$):
 ```text
 Final-Exam/
 ├── q3/                               # Question 3: CartCraft Project
-│   ├── server/                       # Express 4, Node.js, MongoDB API
+│   ├── backend/                      # Express 4, Node.js, MongoDB API
 │   │   ├── config/                   # Database connection
 │   │   ├── controllers/              # Auth, Product, Cart, Checkout, Order controllers
 │   │   ├── middleware/               # JWT authentication & admin guards
 │   │   ├── models/                   # Mongoose schemas (User, Product, Cart, Order, Idempotency)
 │   │   ├── routes/                   # API endpoint routes
+│   │   ├── services/                 # Shipping calculation service
+│   │   ├── utils/                    # Response formatter utility
 │   │   ├── tests/                    # Automated test suites
 │   │   ├── package.json
 │   │   └── server.js
-│   ├── client/                       # React (Vite) Frontend Application
+│   ├── frontend/                     # React (Vite) Frontend Application
 │   │   ├── src/
 │   │   │   ├── context/              # Authentication context (JWT state)
 │   │   │   ├── pages/                # Login, Register, Products, Cart, Orders
@@ -85,7 +87,7 @@ Final-Exam/
 
 ### 1. Backend Setup
 ```bash
-cd q3/server
+cd q3/backend
 npm install
 npm run seed       # Seeds database with admin, customer, and sample products
 npm start          # Runs backend on http://localhost:5000
@@ -93,9 +95,9 @@ npm start          # Runs backend on http://localhost:5000
 
 ### 2. Frontend Setup
 ```bash
-cd ../client
+cd ../frontend
 npm install
-npm run dev        # Runs React client on http://localhost:3000
+npm run dev        # Runs React frontend on http://localhost:3000
 ```
 
 Open your browser at `http://localhost:3000`.
@@ -114,7 +116,7 @@ Open your browser at `http://localhost:3000`.
 
 ## 🧪 Automated Verification Test Scripts
 
-Ensure the backend server is running (`npm start`), then in `q3/server` run:
+Ensure the backend is running (`npm start`), then in `q3/backend` run:
 
 1. **Idempotency Test (Double Submission):**
    ```bash
